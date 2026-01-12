@@ -1,0 +1,78 @@
+# Virtual environment
+.venv/
+venv/
+env/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+
+# Build artifacts
+*.egg
+*.egg-info/
+dist/
+build/
+
+# UV cache
+.uv/
+
+# Sensitive configuration files - ALLOW templates
+config/*.json
+config/*.yaml
+config/*/
+!config/*.template
+!config/refiner_config.yaml
+!config/README.md
+config/*.bak
+config/*.bak.*
+config/*testmode*.json
+config/conversation_config*.json
+
+# Environment variables
+.env
+.env.*
+!.env.example
+
+# Debug output & workspace
+run_workspace/
+captured_send_request.json
+config/session_report.json
+
+# IDE
+.vscode/
+.idea/
+.claude/
+.opencode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test outputs containing real data
+tests/output/
+test_workspace/
+*.log
+
+# Paper content and research data
+paper/
+examples/
+*.aux
+*.bbl
+*.blg
+*.out
+*.toc
+*.synctex.gz
+
+# Documentation - ignore all except essential ones
+docs/
+AGENT.md
+report.md
+.github-release-notes.md
+OPENSOURCE_CHECKLIST.md

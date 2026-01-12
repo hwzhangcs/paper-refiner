@@ -1,0 +1,109 @@
+# Paper Refiner Configuration
+# Multi-Iteration Architecture Settings
+
+# General settings
+general:
+  max_iterations: 5
+  work_dir: "./refiner_output"
+  log_level: "INFO"
+
+# Convergence detection thresholds
+convergence:
+  token_change_ratio: 0.05      # < 5% change triggers convergence
+  new_p0_issues: 0              # Must have no new P0 issues
+  new_p1_threshold: 2           # <= 2 new P1 issues allowed
+  sections_modified: 2          # <= 2 sections modified
+  consecutive_low_change: 2     # 2 consecutive low-change iterations
+  min_iterations: 1             # Minimum iterations before convergence check
+
+# Pass configurations
+passes:
+  pass_1:
+    name: "Document Structure"
+    focus: "Overall organization, thesis clarity, taxonomy soundness, scope"
+    max_rounds: 3
+    priority_threshold: "P0"
+    issue_types:
+      - "section_org"
+      - "taxonomy"
+      - "scope"
+      - "thesis"
+
+  pass_2:
+    name: "Section Coherence"
+    focus: "Inter-section transitions, argument flow, balance"
+    max_rounds: 3
+    priority_threshold: "P0"
+    issue_types:
+      - "transitions"
+      - "logic_flow"
+      - "balance"
+      - "section_coherence"
+
+  pass_3:
+    name: "Paragraph Quality"
+    focus: "Topic sentences, evidence synthesis, paragraph structure"
+    max_rounds: 3
+    priority_threshold: "P1"
+    issue_types:
+      - "topic_sentence"
+      - "evidence"
+      - "paragraph_structure"
+
+  pass_4:
+    name: "Sentence Refinement"
+    focus: "Clarity, style, grammar, conciseness"
+    max_rounds: 2
+    priority_threshold: "P1"
+    issue_types:
+      - "clarity"
+      - "style"
+      - "grammar"
+      - "wordiness"
+
+  pass_5:
+    name: "Final Polish"
+    focus: "Citations, typos, formatting, minor improvements"
+    max_rounds: 2
+    priority_threshold: "P2"
+    issue_types:
+      - "citation"
+      - "typo"
+      - "formatting"
+      - "minor"
+
+# Reviewer (YuketangAI) settings
+reviewer:
+  retry_attempts: 3
+  drift_detection: true
+  scope_lock: true
+
+# Editor (OpenAI) settings
+editor:
+  model: "gpt-4o"
+  retry_attempts: 3
+  temperature: 0.3
+  max_tokens: 4096
+
+# Report generation settings
+reports:
+  generate_iteration_comparison: true
+  generate_pass_details: true
+  generate_final_summary: true
+  include_diffs: true
+  max_diff_lines: 30
+
+# TPAMI-specific settings
+tpami:
+  enabled: true
+  citation_style: "IEEE"
+  min_sections:
+    - "Introduction"
+    - "Related Work"
+    - "Method"
+    - "Experiments"
+    - "Conclusion"
+  required_elements:
+    - "abstract"
+    - "keywords"
+    - "bibliography"
