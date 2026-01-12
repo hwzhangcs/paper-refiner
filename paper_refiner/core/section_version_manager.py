@@ -53,17 +53,17 @@ class SectionVersionManager:
         path_str = str(path.absolute())
         if path_str in self._cache:
             return self._cache[path_str]
-        
-        with open(path, 'r', encoding='utf-8') as f:
+
+        with open(path, "r", encoding="utf-8") as f:
             content = f.read()
-        
+
         self._cache[path_str] = content
         return content
 
     def _write_file(self, path: Path, content: str) -> None:
         """Write file content and update cache."""
         path_str = str(path.absolute())
-        with open(path, 'w', encoding='utf-8') as f:
+        with open(path, "w", encoding="utf-8") as f:
             f.write(content)
         self._cache[path_str] = content
 
@@ -86,34 +86,34 @@ class SectionVersionManager:
 
         # Extract sections with their full content
         # Pattern: \section{Title} followed by everything until next \section or end
-        pattern = r'\\section\{([^}]+)\}(.*?)(?=\\section\{|\\bibliography|\\end\{document\}|\Z)'
+        pattern = r"\\section\{([^}]+)\}(.*?)(?=\\section\{|\\bibliography|\\end\{document\}|\Z)"
         matches = re.findall(pattern, content, re.DOTALL)
 
         sections = {}
         section_order = []  # Track original document order
         for title, body in matches:
-            section_id = self._normalize_section_id(title)
+            section_id = self.normalize_section_id(title)
             section_content = f"\\section{{{title}}}\n{body}"
             sections[section_id] = section_content
             section_order.append(section_id)
 
         # Also extract document preamble and postamble for reconstruction
-        preamble_pattern = r'^(.*?)\\section\{'
+        preamble_pattern = r"^(.*?)\\section\{"
         preamble_match = re.search(preamble_pattern, content, re.DOTALL)
         if preamble_match:
-            sections['_preamble'] = preamble_match.group(1)
+            sections["_preamble"] = preamble_match.group(1)
 
-        postamble_pattern = r'(\\bibliography.*?\\end\{document\}.*?)$'
+        postamble_pattern = r"(\\bibliography.*?\\end\{document\}.*?)$"
         postamble_match = re.search(postamble_pattern, content, re.DOTALL)
         if postamble_match:
-            sections['_postamble'] = postamble_match.group(1)
+            sections["_postamble"] = postamble_match.group(1)
 
         # Save section order to metadata file for later reconstruction
         self._save_section_order(section_order)
 
         return sections
 
-    def _normalize_section_id(self, section_title: str) -> str:
+    def normalize_section_id(self, section_title: str) -> str:
         """Normalize section title to a valid identifier.
 
         Args:
@@ -123,22 +123,22 @@ class SectionVersionManager:
             Normalized identifier (e.g., "introduction")
         """
         # Lowercase, replace spaces with underscores, remove non-alphanumeric
-        clean = re.sub(r'[^a-zA-Z0-9\s]', '', section_title)
-        return clean.strip().lower().replace(' ', '_')
+        clean = re.sub(r"[^a-zA-Z0-9\s]", "", section_title)
+        return clean.strip().lower().replace(" ", "_")
 
     def _save_section_order(self, order: List[str]) -> None:
         """Save the original order of sections."""
         metadata_path = self.sections_dir / "section_order.json"
-        with open(metadata_path, 'w', encoding='utf-8') as f:
-            json.dump({'order': order}, f, indent=2)
+        with open(metadata_path, "w", encoding="utf-8") as f:
+            json.dump({"order": order}, f, indent=2)
 
     def get_section_order(self) -> List[str]:
         """Retrieve the original section order."""
         metadata_path = self.sections_dir / "section_order.json"
         if metadata_path.exists():
-            with open(metadata_path, 'r', encoding='utf-8') as f:
+            with open(metadata_path, "r", encoding="utf-8") as f:
                 data = json.load(f)
-                return data.get('order', [])
+                return data.get("order", [])
         return []
 
     def save_section_original(self, section_id: str, content: str) -> Path:
@@ -159,13 +159,14 @@ class SectionVersionManager:
 
         # Create basic metadata
         metadata = {
-            'section_id': section_id,
-            'version': 'original',
-            'timestamp': datetime.now().isoformat(),
-            'token_count': self._count_tokens(content)
+            "section_id": section_id,
+            "version": "original",
+            "iteration": 0,
+            "timestamp": datetime.now().isoformat(),
+            "token_count": self._count_tokens(content),
         }
         metadata_path = section_dir / "original_metadata.json"
-        with open(metadata_path, 'w', encoding='utf-8') as f:
+        with open(metadata_path, "w", encoding="utf-8") as f:
             json.dump(metadata, f, indent=2)
 
         return original_path
@@ -176,7 +177,7 @@ class SectionVersionManager:
         content: str,
         iteration: int,
         pass_id: int,
-        is_final: bool = False
+        is_final: bool = False,
     ) -> Path:
         """Save a version of a section at a specific iteration/pass checkpoint.
 
@@ -204,24 +205,21 @@ class SectionVersionManager:
 
         # Save metadata
         metadata = {
-            'section_id': section_id,
-            'iteration': iteration,
-            'pass_id': pass_id,
-            'is_final': is_final,
-            'timestamp': datetime.now().isoformat(),
-            'token_count': self._count_tokens(content)
+            "section_id": section_id,
+            "iteration": iteration,
+            "pass_id": pass_id,
+            "is_final": is_final,
+            "timestamp": datetime.now().isoformat(),
+            "token_count": self._count_tokens(content),
         }
         metadata_path = section_dir / f"{filename.replace('.tex', '_metadata.json')}"
-        with open(metadata_path, 'w', encoding='utf-8') as f:
+        with open(metadata_path, "w", encoding="utf-8") as f:
             json.dump(metadata, f, indent=2)
 
         return file_path
 
     def get_section_three_versions(
-        self,
-        section_id: str,
-        iteration: int,
-        current_pass: int
+        self, section_id: str, iteration: int, current_pass: int
     ) -> Dict[str, Optional[str]]:
         """Get three versions of a section for residual diff computation.
 
@@ -236,10 +234,10 @@ class SectionVersionManager:
             - previous: The version from the previous pass (or None if pass 1)
             - current: The current working version
         """
-        versions = {
-            'original': None,
-            'previous': None,
-            'current': None
+        versions: Dict[str, Optional[str]] = {
+            "original": None,
+            "previous": None,
+            "current": None,
         }
 
         section_dir = self.sections_dir / section_id
@@ -247,77 +245,89 @@ class SectionVersionManager:
         # Get original version
         original_path = section_dir / "original.tex"
         if original_path.exists():
-            versions['original'] = self._read_file(original_path)
+            versions["original"] = self._read_file(original_path)
 
         # Get previous version
         if current_pass > 1:
             # Previous pass in same iteration
-            previous_path = section_dir / f"iter{iteration}" / f"pass{current_pass-1}_final.tex"
+            previous_path = (
+                section_dir / f"iter{iteration}" / f"pass{current_pass - 1}_final.tex"
+            )
             if previous_path.exists():
-                versions['previous'] = self._read_file(previous_path)
+                versions["previous"] = self._read_file(previous_path)
             else:
                 # Fallback: search for any previous pass in this iteration or previous iterations
                 found_previous = False
                 for prev_pass in range(current_pass - 1, 0, -1):
-                    fallback_path = section_dir / f"iter{iteration}" / f"pass{prev_pass}_final.tex"
+                    fallback_path = (
+                        section_dir / f"iter{iteration}" / f"pass{prev_pass}_final.tex"
+                    )
                     if fallback_path.exists():
-                        versions['previous'] = self._read_file(fallback_path)
+                        versions["previous"] = self._read_file(fallback_path)
                         found_previous = True
                         break
                 # If still not found, check previous iterations
                 if not found_previous:
                     for prev_iter in range(iteration - 1, 0, -1):
                         for prev_pass in range(5, 0, -1):
-                            fallback_path = section_dir / f"iter{prev_iter}" / f"pass{prev_pass}_final.tex"
+                            fallback_path = (
+                                section_dir
+                                / f"iter{prev_iter}"
+                                / f"pass{prev_pass}_final.tex"
+                            )
                             if fallback_path.exists():
-                                versions['previous'] = self._read_file(fallback_path)
+                                versions["previous"] = self._read_file(fallback_path)
                                 found_previous = True
                                 break
                         if found_previous:
                             break
                 # Ultimate fallback: use original
                 if not found_previous:
-                    versions['previous'] = versions['original']
+                    versions["previous"] = versions["original"]
         elif iteration > 1:
             # Last pass of previous iteration - try to find any previous version
-            previous_iter_path = section_dir / f"iter{iteration-1}" / "pass5_final.tex"
+            previous_iter_path = (
+                section_dir / f"iter{iteration - 1}" / "pass5_final.tex"
+            )
             if previous_iter_path.exists():
-                versions['previous'] = self._read_file(previous_iter_path)
+                versions["previous"] = self._read_file(previous_iter_path)
             else:
                 # Fallback: search for any previous iteration's final version
                 found_previous = False
                 for prev_iter in range(iteration - 1, 0, -1):
                     for prev_pass in range(5, 0, -1):
-                        fallback_path = section_dir / f"iter{prev_iter}" / f"pass{prev_pass}_final.tex"
+                        fallback_path = (
+                            section_dir
+                            / f"iter{prev_iter}"
+                            / f"pass{prev_pass}_final.tex"
+                        )
                         if fallback_path.exists():
-                            versions['previous'] = self._read_file(fallback_path)
+                            versions["previous"] = self._read_file(fallback_path)
                             found_previous = True
                             break
                     if found_previous:
                         break
                 # Ultimate fallback: use original
                 if not found_previous:
-                    versions['previous'] = versions['original']
+                    versions["previous"] = versions["original"]
         else:
             # No previous version for iteration 1, pass 1
-            versions['previous'] = versions['original']
+            versions["previous"] = versions["original"]
 
         # Get current working version
-        current_path = section_dir / f"iter{iteration}" / f"pass{current_pass}_working.tex"
+        current_path = (
+            section_dir / f"iter{iteration}" / f"pass{current_pass}_working.tex"
+        )
         if current_path.exists():
-            versions['current'] = self._read_file(current_path)
+            versions["current"] = self._read_file(current_path)
         else:
             # If no working version yet, use previous as current
-            versions['current'] = versions['previous']
+            versions["current"] = versions["previous"]
 
         return versions
 
     def compute_residual_diff(
-        self,
-        section_id: str,
-        iteration: int,
-        current_pass: int,
-        context_lines: int = 3
+        self, section_id: str, iteration: int, current_pass: int, context_lines: int = 3
     ) -> str:
         """Compute residual diff showing only new changes not in previous version.
 
@@ -332,28 +342,28 @@ class SectionVersionManager:
         """
         versions = self.get_section_three_versions(section_id, iteration, current_pass)
 
-        if versions['previous'] is None or versions['current'] is None:
+        if versions["previous"] is None or versions["current"] is None:
             return ""
 
         # Generate unified diff
-        previous_lines = versions['previous'].splitlines(keepends=True)
-        current_lines = versions['current'].splitlines(keepends=True)
+        previous_lines = versions["previous"].splitlines(keepends=True)
+        current_lines = versions["current"].splitlines(keepends=True)
 
         diff = difflib.unified_diff(
             previous_lines,
             current_lines,
             fromfile=f"{section_id}_previous",
             tofile=f"{section_id}_current",
-            n=context_lines
+            n=context_lines,
         )
 
-        return ''.join(diff)
+        return "".join(diff)
 
     def merge_sections_to_paper(
         self,
         sections: Dict[str, str],
         output_path: Path,
-        section_order: Optional[List[str]] = None
+        section_order: Optional[List[str]] = None,
     ) -> Path:
         """Merge section versions back into a complete paper.
 
@@ -370,8 +380,8 @@ class SectionVersionManager:
         parts = []
 
         # Add preamble if exists
-        if '_preamble' in sections:
-            parts.append(sections['_preamble'])
+        if "_preamble" in sections:
+            parts.append(sections["_preamble"])
 
         # Get section order: use provided order, or load from saved metadata
         if section_order is None:
@@ -387,25 +397,21 @@ class SectionVersionManager:
 
         # Then add any remaining sections not in the order list (shouldn't happen normally)
         for section_id in sections.keys():
-            if not section_id.startswith('_') and section_id not in added_sections:
+            if not section_id.startswith("_") and section_id not in added_sections:
                 parts.append(sections[section_id])
 
         # Add postamble if exists
-        if '_postamble' in sections:
-            parts.append(sections['_postamble'])
+        if "_postamble" in sections:
+            parts.append(sections["_postamble"])
 
         # Write to file
         output_path.parent.mkdir(parents=True, exist_ok=True)
-        self._write_file(output_path, '\n\n'.join(parts))
+        self._write_file(output_path, "\n\n".join(parts))
 
         return output_path
 
     def get_section_content(
-        self,
-        section_id: str,
-        iteration: int,
-        pass_id: int,
-        is_final: bool = True
+        self, section_id: str, iteration: int, pass_id: int, is_final: bool = True
     ) -> Optional[str]:
         """Retrieve section content at a specific iteration/pass.
 
@@ -434,19 +440,34 @@ class SectionVersionManager:
         suffix = "final" if is_final else "working"
 
         # Option 1: Exact path iter{iteration}/pass{pass_id}
-        path = self.sections_dir / section_id / f"iter{iteration}" / f"pass{pass_id}_{suffix}.tex"
+        path = (
+            self.sections_dir
+            / section_id
+            / f"iter{iteration}"
+            / f"pass{pass_id}_{suffix}.tex"
+        )
         if path.exists():
             return self._read_file(path)
 
         # Option 2: Try previous passes in the same iteration
         for prev_pass in range(pass_id - 1, 0, -1):
-            path = self.sections_dir / section_id / f"iter{iteration}" / f"pass{prev_pass}_{suffix}.tex"
+            path = (
+                self.sections_dir
+                / section_id
+                / f"iter{iteration}"
+                / f"pass{prev_pass}_{suffix}.tex"
+            )
             if path.exists():
                 return self._read_file(path)
 
         # Option 3: Try previous iteration's pass5 (final)
         for prev_iter in range(iteration - 1, 0, -1):
-            path = self.sections_dir / section_id / f"iter{prev_iter}" / f"pass5_{suffix}.tex"
+            path = (
+                self.sections_dir
+                / section_id
+                / f"iter{prev_iter}"
+                / f"pass5_{suffix}.tex"
+            )
             if path.exists():
                 return self._read_file(path)
 
@@ -505,7 +526,7 @@ class SectionVersionManager:
         # Get all section directories
         existing_sections = set()
         for item in self.sections_dir.iterdir():
-            if item.is_dir() and not item.name.startswith('_'):
+            if item.is_dir() and not item.name.startswith("_"):
                 existing_sections.add(item.name)
 
         if preserve_order:
@@ -535,9 +556,7 @@ class SectionVersionManager:
         return len(text.split())
 
     def get_iteration_snapshot(
-        self,
-        iteration: int,
-        pass_id: int = 5
+        self, iteration: int, pass_id: int = 5
     ) -> Dict[str, str]:
         """Get a snapshot of all sections at a specific iteration/pass.
 
@@ -550,17 +569,19 @@ class SectionVersionManager:
         """
         sections = {}
         for section_id in self.list_sections():
-            content = self.get_section_content(section_id, iteration, pass_id, is_final=True)
+            content = self.get_section_content(
+                section_id, iteration, pass_id, is_final=True
+            )
             if content:
                 sections[section_id] = content
 
         # Include preamble and postamble if they exist (use special section retrieval)
-        preamble = self._get_special_section('_preamble')
+        preamble = self._get_special_section("_preamble")
         if preamble:
-            sections['_preamble'] = preamble
+            sections["_preamble"] = preamble
 
-        postamble = self._get_special_section('_postamble')
+        postamble = self._get_special_section("_postamble")
         if postamble:
-            sections['_postamble'] = postamble
+            sections["_postamble"] = postamble
 
         return sections

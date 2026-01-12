@@ -35,17 +35,17 @@ class PaperRefinerOrchestrator:
         self,
         paper_path: str,
         work_dir: str = "run_workspace",
-        ykt_cookies: Dict[str, str] = None,
+        ykt_cookies: Optional[Dict[str, str]] = None,
         ykt_params: Optional[Dict[str, str]] = None,
         ykt_conversation_id: Optional[int] = None,
         ykt_review_params: Optional[Dict[str, str]] = None,
         ykt_review_conversation_id: Optional[int] = None,
         reset_conversation_each_request: bool = True,
-        openai_key: str = None,
-        openai_base_url: str = None,
+        openai_key: Optional[str] = None,
+        openai_base_url: Optional[str] = None,
         openai_model: str = "gpt-3.5-turbo",
         max_iterations: int = 5,
-        tpami_pdf_path: str = None
+        tpami_pdf_path: Optional[str] = None,
     ):
         """Initialize the orchestrator with all required components.
 
@@ -69,7 +69,11 @@ class PaperRefinerOrchestrator:
 
         # Set default TPAMI PDF path if not provided
         if tpami_pdf_path is None:
-            tpami_pdf_path = str(Path(__file__).parent / "resources" / "TPAMI_Information_for_Authors.pdf")
+            tpami_pdf_path = str(
+                Path(__file__).parent
+                / "resources"
+                / "TPAMI_Information_for_Authors.pdf"
+            )
 
         # Create work directory
         self.work_dir.mkdir(parents=True, exist_ok=True)
@@ -78,7 +82,7 @@ class PaperRefinerOrchestrator:
         self.logger = logging.getLogger(__name__)
         logging.basicConfig(
             level=logging.INFO,
-            format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+            format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
         )
 
         # Configure iteration settings
@@ -86,7 +90,11 @@ class PaperRefinerOrchestrator:
 
         # Load defaults from config files if not provided
         try:
-            from paper_api.config import load_cookies, load_session_params, load_conversation_id
+            from paper_api.config import (
+                load_cookies,
+                load_session_params,
+                load_conversation_id,
+            )
         except Exception:
             load_cookies = load_session_params = load_conversation_id = None  # type: ignore
 
@@ -109,23 +117,31 @@ class PaperRefinerOrchestrator:
 
         if ykt_conversation_id is None and load_conversation_id:
             try:
-                ykt_conversation_id = load_conversation_id("config/conversation_config_assistant.json")
+                ykt_conversation_id = load_conversation_id(
+                    "config/conversation_config_assistant.json"
+                )
             except FileNotFoundError:
                 try:
-                    ykt_conversation_id = load_conversation_id("config/conversation_config.json")
+                    ykt_conversation_id = load_conversation_id(
+                        "config/conversation_config.json"
+                    )
                 except FileNotFoundError:
                     ykt_conversation_id = None
 
         # Load review mode config (for Iteration 0)
         if ykt_review_params is None and load_session_params:
             try:
-                ykt_review_params = load_session_params("config/session_params_review.json")
+                ykt_review_params = load_session_params(
+                    "config/session_params_review.json"
+                )
             except FileNotFoundError:
                 ykt_review_params = None
 
         if ykt_review_conversation_id is None and load_conversation_id:
             try:
-                ykt_review_conversation_id = load_conversation_id("config/conversation_config_review.json")
+                ykt_review_conversation_id = load_conversation_id(
+                    "config/conversation_config_review.json"
+                )
             except FileNotFoundError:
                 ykt_review_conversation_id = None
 
@@ -147,9 +163,7 @@ class PaperRefinerOrchestrator:
         )
 
         self.editor = EditorAgent(
-            api_key=openai_key,
-            base_url=openai_base_url,
-            model=openai_model
+            api_key=openai_key, base_url=openai_base_url, model=openai_model
         )
 
         # Initialize the iteration coordinator
@@ -161,7 +175,7 @@ class PaperRefinerOrchestrator:
             editor=self.editor,
             max_iterations=max_iterations,
             config=config,
-            tpami_pdf_path=tpami_pdf_path
+            tpami_pdf_path=tpami_pdf_path,
         )
 
     def _load_config(self) -> Dict[str, Any]:
@@ -170,17 +184,18 @@ class PaperRefinerOrchestrator:
         if config_path.exists():
             try:
                 import yaml
-                with open(config_path, 'r') as f:
+
+                with open(config_path, "r") as f:
                     return yaml.safe_load(f)
             except Exception as e:
                 self.logger.warning(f"Failed to load config: {e}")
 
         # Default configuration
         return {
-            'convergence': {
-                'min_iterations': 2,
-                'token_change_threshold': 0.05,  # 5%
-                'max_iterations': 5
+            "convergence": {
+                "min_iterations": 2,
+                "token_change_threshold": 0.05,  # 5%
+                "max_iterations": 5,
             }
         }
 
@@ -216,15 +231,21 @@ class PaperRefinerOrchestrator:
     def _print_summary(self):
         """Print a summary of the refinement process."""
         self.logger.info("")
-        self.logger.info("="*60)
+        self.logger.info("=" * 60)
         self.logger.info("REFINEMENT SUMMARY")
-        self.logger.info("="*60)
+        self.logger.info("=" * 60)
 
         if self.coordinator.iteration_history:
-            total_issues = sum(s.issues_resolved for s in self.coordinator.iteration_history)
-            total_revisions = sum(s.total_revisions for s in self.coordinator.iteration_history)
+            total_issues = sum(
+                s.issues_resolved for s in self.coordinator.iteration_history
+            )
+            total_revisions = sum(
+                s.total_revisions for s in self.coordinator.iteration_history
+            )
 
-            self.logger.info(f"Total iterations: {len(self.coordinator.iteration_history)}")
+            self.logger.info(
+                f"Total iterations: {len(self.coordinator.iteration_history)}"
+            )
             self.logger.info(f"Total issues resolved: {total_issues}")
             self.logger.info(f"Total revisions: {total_revisions}")
 
@@ -240,4 +261,4 @@ class PaperRefinerOrchestrator:
         self.logger.info("  - ITERATION_COMPARISON.md")
         self.logger.info("  - PASS_REVISION_DETAILS.md")
         self.logger.info("  - issues.json")
-        self.logger.info("="*60)
+        self.logger.info("=" * 60)

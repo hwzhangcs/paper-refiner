@@ -13,7 +13,13 @@ from typing import List, Dict, Set, Tuple, Optional, Any
 from datetime import datetime
 import logging
 
-from paper_refiner.models import PassConfig, PassResult, RevisionRecord, PASS_NAMES, PASS_FOCUS
+from paper_refiner.models import (
+    PassConfig,
+    PassResult,
+    RevisionRecord,
+    PASS_NAMES,
+    PASS_FOCUS,
+)
 import json
 from paper_refiner.core.section_version_manager import SectionVersionManager
 from paper_refiner.core.issue_tracker import IssueTracker
@@ -42,7 +48,7 @@ class PassCoordinator:
         revision_recorder: RevisionRecorder,
         reviewer: ReviewerAgent,
         editor: EditorAgent,
-        pass_configs: Optional[Dict[int, PassConfig]] = None
+        pass_configs: Optional[Dict[int, PassConfig]] = None,
     ):
         """Initialize the pass coordinator.
 
@@ -86,16 +92,21 @@ class PassCoordinator:
                 reviewer_prompt=get_pass_prompt(1),
                 issue_types=["section_org", "taxonomy", "scope", "thesis"],
                 max_rounds=3,
-                priority_threshold="P0"
+                priority_threshold="P0",
             ),
             2: PassConfig(
                 id=2,
                 name="Section Coherence",
                 focus="Inter-section transitions, argument flow, balance",
                 reviewer_prompt=get_pass_prompt(2),
-                issue_types=["transitions", "logic_flow", "balance", "section_coherence"],
+                issue_types=[
+                    "transitions",
+                    "logic_flow",
+                    "balance",
+                    "section_coherence",
+                ],
                 max_rounds=3,
-                priority_threshold="P0"
+                priority_threshold="P0",
             ),
             3: PassConfig(
                 id=3,
@@ -104,7 +115,7 @@ class PassCoordinator:
                 reviewer_prompt=get_pass_prompt(3),
                 issue_types=["topic_sentence", "evidence", "paragraph_structure"],
                 max_rounds=3,
-                priority_threshold="P1"
+                priority_threshold="P1",
             ),
             4: PassConfig(
                 id=4,
@@ -113,7 +124,7 @@ class PassCoordinator:
                 reviewer_prompt=get_pass_prompt(4),
                 issue_types=["clarity", "style", "grammar", "wordiness"],
                 max_rounds=2,
-                priority_threshold="P1"
+                priority_threshold="P1",
             ),
             5: PassConfig(
                 id=5,
@@ -122,8 +133,8 @@ class PassCoordinator:
                 reviewer_prompt=get_pass_prompt(5),
                 issue_types=["citation", "typo", "formatting", "minor"],
                 max_rounds=2,
-                priority_threshold="P2"
-            )
+                priority_threshold="P2",
+            ),
         }
 
     def execute_pass(self, pass_id: int, paper_path: Path) -> PassResult:
@@ -145,16 +156,14 @@ class PassCoordinator:
         # Step 1: Pass-specific review
         self.logger.info(f"  Step 1: Reviewing with Pass {pass_id} focus...")
         new_issues_count = self._conduct_pass_review(
-            pass_id,
-            paper_path,
-            config.reviewer_prompt
+            pass_id, paper_path, config.reviewer_prompt
         )
         self.logger.info(f"  Found {new_issues_count} new issues for Pass {pass_id}")
 
         # Step 2: Repair loop (limited rounds)
         self.logger.info(f"  Step 2: Repair loop (max {config.max_rounds} rounds)...")
-        issues_resolved, total_revisions, sections_modified = self._run_pass_repair_loop(
-            pass_id, config.max_rounds
+        issues_resolved, total_revisions, sections_modified = (
+            self._run_pass_repair_loop(pass_id, config.max_rounds)
         )
 
         # Step 3: Save pass checkpoint
@@ -173,7 +182,7 @@ class PassCoordinator:
             sections_modified=list(sections_modified),
             output_paper_path=str(output_path),
             duration_seconds=duration,
-            issues_created=new_issues_count
+            issues_created=new_issues_count,
         )
 
         self.logger.info(
@@ -186,10 +195,7 @@ class PassCoordinator:
         return pass_result
 
     def _conduct_pass_review(
-        self,
-        pass_id: int,
-        paper_path: Path,
-        pass_prompt: str
+        self, pass_id: int, paper_path: Path, pass_prompt: str
     ) -> int:
         """Conduct pass-specific review to identify issues.
 
@@ -210,7 +216,6 @@ class PassCoordinator:
             section_versions[section_id] = versions
 
         # Submit for pass-specific review
-        # TODO: Implement pass-specific prompts in reviewer
         new_issues = self.reviewer.submit_paper_for_pass_review(
             pass_id,
             str(paper_path),
@@ -221,8 +226,8 @@ class PassCoordinator:
 
         # Add issues with iteration and pass tracking
         for issue in new_issues:
-            issue['iteration'] = self.iteration_num
-            issue['pass_id'] = pass_id
+            issue["iteration"] = self.iteration_num
+            issue["pass_id"] = pass_id
 
         self.issue_tracker.add_issues(new_issues, self.iteration_num, pass_id)
         self.issue_tracker.save()
@@ -230,17 +235,15 @@ class PassCoordinator:
         return len(new_issues)
 
     def _normalize_issue_sections(
-        self,
-        issues: List[Dict[str, Any]],
-        valid_sections: List[str]
+        self, issues: List[Dict[str, Any]], valid_sections: List[str]
     ) -> None:
         if not issues or not valid_sections:
             return
 
         for issue in issues:
-            raw_sections = issue.get('affected_sections')
+            raw_sections = issue.get("affected_sections")
             if not isinstance(raw_sections, list) or not raw_sections:
-                issue['affected_sections'] = []
+                issue["affected_sections"] = []
                 self.logger.warning(
                     f"Issue {issue.get('id')} missing affected_sections; skipping section mapping."
                 )
@@ -258,7 +261,7 @@ class PassCoordinator:
                     resolved_sections.append(resolved)
 
             if not resolved_sections:
-                issue['affected_sections'] = []
+                issue["affected_sections"] = []
                 self.logger.warning(
                     f"Issue {issue.get('id')} has no valid affected_sections after normalization."
                 )
@@ -266,9 +269,11 @@ class PassCoordinator:
 
             # Preserve order while de-duplicating
             deduped = list(dict.fromkeys(resolved_sections))
-            issue['affected_sections'] = deduped
+            issue["affected_sections"] = deduped
 
-    def _resolve_section_id(self, raw_section: str, valid_sections: List[str]) -> Optional[str]:
+    def _resolve_section_id(
+        self, raw_section: str, valid_sections: List[str]
+    ) -> Optional[str]:
         import re
         import difflib
 
@@ -284,17 +289,17 @@ class PassCoordinator:
         if normalized in valid_sections:
             return normalized
 
-        numeric_match = re.match(r'^section_(\d+)$', normalized)
+        numeric_match = re.match(r"^section_(\d+)$", normalized)
         if numeric_match:
             idx = int(numeric_match.group(1))
             if 1 <= idx <= len(valid_sections):
                 return valid_sections[idx - 1]
 
-        normalized = re.sub(r'^section_\\d+_', '', normalized)
+        normalized = re.sub(r"^section_\\d+_", "", normalized)
         if normalized in valid_sections:
             return normalized
 
-        normalized = re.sub(r'^section_', '', normalized)
+        normalized = re.sub(r"^section_", "", normalized)
         if normalized in valid_sections:
             return normalized
 
@@ -316,9 +321,7 @@ class PassCoordinator:
         return None
 
     def _run_pass_repair_loop(
-        self,
-        pass_id: int,
-        max_rounds: int
+        self, pass_id: int, max_rounds: int
     ) -> Tuple[int, int, Set[str]]:
         """Execute the repair loop for this pass.
 
@@ -340,7 +343,9 @@ class PassCoordinator:
             open_issues = self._get_issues_for_round(pass_id, round_num)
 
             if not open_issues:
-                self.logger.info(f"    No more issues for Pass {pass_id}, Round {round_num}")
+                self.logger.info(
+                    f"    No more issues for Pass {pass_id}, Round {round_num}"
+                )
                 break
 
             # Fix each issue
@@ -351,16 +356,13 @@ class PassCoordinator:
                     total_revisions += 1
                     if resolved:
                         issues_resolved += 1
-                    if issue.get('affected_sections'):
-                        sections_modified.add(issue['affected_sections'][0])
+                    if issue.get("affected_sections"):
+                        sections_modified.add(issue["affected_sections"][0])
 
         return issues_resolved, total_revisions, sections_modified
 
     def _get_issues_for_round(
-        self,
-        pass_id: int,
-        round_num: int,
-        max_issues: int = 3
+        self, pass_id: int, round_num: int, max_issues: int = 3
     ) -> List[Dict[str, Any]]:
         """Get issues to fix in this round.
 
@@ -374,34 +376,25 @@ class PassCoordinator:
         """
         # Try P0 issues first
         issues = self.issue_tracker.get_open_issues(
-            iteration=self.iteration_num,
-            pass_id=pass_id,
-            priority_filter=["P0"]
+            iteration=self.iteration_num, pass_id=pass_id, priority_filter=["P0"]
         )[:max_issues]
 
         # If no P0, try P1
         if not issues:
             issues = self.issue_tracker.get_open_issues(
-                iteration=self.iteration_num,
-                pass_id=pass_id,
-                priority_filter=["P1"]
-            )[:max_issues-1]
+                iteration=self.iteration_num, pass_id=pass_id, priority_filter=["P1"]
+            )[: max_issues - 1]
 
         # For pass 5, also include P2
         if not issues and pass_id == 5:
             issues = self.issue_tracker.get_open_issues(
-                iteration=self.iteration_num,
-                pass_id=pass_id,
-                priority_filter=["P2"]
-            )[:max_issues-2]
+                iteration=self.iteration_num, pass_id=pass_id, priority_filter=["P2"]
+            )[: max_issues - 2]
 
         return [issue.to_dict() for issue in issues]
 
     def _fix_single_issue(
-        self,
-        issue: Dict[str, Any],
-        pass_id: int,
-        round_num: int
+        self, issue: Dict[str, Any], pass_id: int, round_num: int
     ) -> Tuple[bool, bool]:
         """Fix a single issue.
 
@@ -414,18 +407,18 @@ class PassCoordinator:
             Tuple of (applied, resolved)
         """
         # Extract section to fix
-        if not issue.get('affected_sections'):
+        if not issue.get("affected_sections"):
             self.logger.warning(f"Issue {issue['id']} has no affected_sections")
             return False, False
 
-        section_id = issue['affected_sections'][0]
+        section_id = issue["affected_sections"][0]
 
         # Get section versions
         versions = self.version_manager.get_section_three_versions(
             section_id, self.iteration_num, pass_id
         )
 
-        current_content = versions.get('current')
+        current_content = versions.get("current")
         if not current_content:
             self.logger.warning(f"No current content for section {section_id}")
             return False, False
@@ -437,10 +430,10 @@ class PassCoordinator:
 
         # Generate patch using editor
         context = {
-            'pass_id': pass_id,
-            'iteration': self.iteration_num,
-            'section_versions': versions,
-            'residual_diff': residual_diff
+            "pass_id": pass_id,
+            "iteration": self.iteration_num,
+            "section_versions": versions,
+            "residual_diff": residual_diff,
         }
 
         try:
@@ -471,7 +464,7 @@ class PassCoordinator:
             content=new_content,
             iteration=self.iteration_num,
             pass_id=pass_id,
-            is_final=False  # Working version, will be finalized at pass end
+            is_final=False,  # Working version, will be finalized at pass end
         )
 
         diff_summary = self._build_diff_summary(current_content, new_content)
@@ -485,34 +478,37 @@ class PassCoordinator:
             iteration=self.iteration_num,
             pass_id=pass_id,
             round_num=round_num,
-            issue_id=issue['id'],
-            issue_title=issue.get('title', ''),
-            issue_priority=issue.get('priority', 'P1'),
-            issue_details=issue.get('details', ''),
+            issue_id=issue["id"],
+            issue_title=issue.get("title", ""),
+            issue_priority=issue.get("priority", "P1"),
+            issue_details=issue.get("details", ""),
             section_id=section_id,
-            rationale=patch.get('rationale', '') if isinstance(patch, dict) else '',
+            rationale=patch.get("rationale", "") if isinstance(patch, dict) else "",
             patch=json.dumps(patch) if isinstance(patch, dict) else str(patch),
             verification_status=status,
-            verification_message=feedback or f"Applied in iter{self.iteration_num}/pass{pass_id}/round{round_num}",
+            verification_message=feedback
+            or f"Applied in iter{self.iteration_num}/pass{pass_id}/round{round_num}",
             timestamp=datetime.now().isoformat(),
-            tokens_changed=tokens_changed
+            tokens_changed=tokens_changed,
         )
         self.revision_recorder.record_revision(revision_record)
 
         # Update issue status based on verification
         if resolved:
             self.issue_tracker.update_status(
-                issue['id'],
-                'resolved',
-                feedback or f"Verified in iter{self.iteration_num}/pass{pass_id}/round{round_num}",
+                issue["id"],
+                "resolved",
+                feedback
+                or f"Verified in iter{self.iteration_num}/pass{pass_id}/round{round_num}",
                 resolved_in_iteration=self.iteration_num,
                 resolved_in_pass=pass_id,
             )
         else:
             self.issue_tracker.update_status(
-                issue['id'],
-                'open',
-                feedback or f"Not resolved in iter{self.iteration_num}/pass{pass_id}/round{round_num}",
+                issue["id"],
+                "open",
+                feedback
+                or f"Not resolved in iter{self.iteration_num}/pass{pass_id}/round{round_num}",
             )
         self.issue_tracker.save()
 
@@ -535,11 +531,7 @@ class PassCoordinator:
         summary = "\n".join(list(diff_lines)[:max_lines])
         return summary or "(no changes detected)"
 
-    def _apply_patch(
-        self,
-        content: str,
-        patch: Dict[str, Any]
-    ) -> Tuple[str, bool]:
+    def _apply_patch(self, content: str, patch: Dict[str, Any]) -> Tuple[str, bool]:
         """Apply a patch to content.
 
         Args:
@@ -549,7 +541,7 @@ class PassCoordinator:
         Returns:
             Tuple of (new_content, success)
         """
-        operations = patch.get('operations', [])
+        operations = patch.get("operations", [])
         if not operations:
             self.logger.warning("Patch has no operations")
             return content, False
@@ -558,11 +550,11 @@ class PassCoordinator:
         all_success = True
 
         for op in operations:
-            op_type = op.get('op', 'replace')
-            search_str = op.get('search', '')
-            replace_str = op.get('replace', '')
+            op_type = op.get("op", "replace")
+            search_str = op.get("search", "")
+            replace_str = op.get("replace", "")
 
-            if op_type == 'replace':
+            if op_type == "replace":
                 if not search_str:
                     self.logger.warning("Replace operation missing 'search' string")
                     all_success = False
@@ -570,11 +562,13 @@ class PassCoordinator:
 
                 if search_str in new_content:
                     new_content = new_content.replace(search_str, replace_str, 1)
-                    self.logger.debug(f"Applied replace: '{search_str[:50]}...' -> '{replace_str[:50]}...'")
+                    self.logger.debug(
+                        f"Applied replace: '{search_str[:50]}...' -> '{replace_str[:50]}...'"
+                    )
                 else:
                     # Try fuzzy matching - sometimes whitespace differs
-                    search_normalized = ' '.join(search_str.split())
-                    content_normalized = ' '.join(new_content.split())
+                    search_normalized = " ".join(search_str.split())
+                    content_normalized = " ".join(new_content.split())
 
                     if search_normalized in content_normalized:
                         # Find the actual position and extract the real string
@@ -582,32 +576,40 @@ class PassCoordinator:
                             f"Exact match failed, but normalized match found for: '{search_str[:50]}...'"
                         )
                         # Try line-by-line matching
-                        matched = self._fuzzy_replace(new_content, search_str, replace_str)
+                        matched = self._fuzzy_replace(
+                            new_content, search_str, replace_str
+                        )
                         if matched:
                             new_content = matched
                         else:
                             all_success = False
                     else:
-                        self.logger.warning(f"Search string not found: '{search_str[:100]}...'")
+                        self.logger.warning(
+                            f"Search string not found: '{search_str[:100]}...'"
+                        )
                         all_success = False
 
-            elif op_type == 'insert':
+            elif op_type == "insert":
                 # Insert after a marker
-                after_str = op.get('after', '')
-                insert_str = op.get('insert', replace_str)
+                after_str = op.get("after", "")
+                insert_str = op.get("insert", replace_str)
 
                 if after_str and after_str in new_content:
                     pos = new_content.find(after_str) + len(after_str)
                     new_content = new_content[:pos] + insert_str + new_content[pos:]
                 else:
-                    self.logger.warning(f"Insert marker not found: '{after_str[:50]}...'")
+                    self.logger.warning(
+                        f"Insert marker not found: '{after_str[:50]}...'"
+                    )
                     all_success = False
 
-            elif op_type == 'delete':
+            elif op_type == "delete":
                 if search_str and search_str in new_content:
-                    new_content = new_content.replace(search_str, '', 1)
+                    new_content = new_content.replace(search_str, "", 1)
                 else:
-                    self.logger.warning(f"Delete string not found: '{search_str[:50]}...'")
+                    self.logger.warning(
+                        f"Delete string not found: '{search_str[:50]}...'"
+                    )
                     all_success = False
 
         # Return success if at least one operation succeeded
@@ -615,10 +617,7 @@ class PassCoordinator:
         return new_content, content_changed
 
     def _fuzzy_replace(
-        self,
-        content: str,
-        search_str: str,
-        replace_str: str
+        self, content: str, search_str: str, replace_str: str
     ) -> Optional[str]:
         """Attempt fuzzy matching for replacement.
 
@@ -635,8 +634,8 @@ class PassCoordinator:
         import difflib
 
         # Split into lines for comparison
-        search_lines = search_str.strip().split('\n')
-        content_lines = content.split('\n')
+        search_lines = search_str.strip().split("\n")
+        content_lines = content.split("\n")
 
         if not search_lines:
             return None
@@ -653,11 +652,11 @@ class PassCoordinator:
                 end_idx = block.a + len(search_lines)
 
                 new_lines = (
-                    content_lines[:start_idx] +
-                    replace_str.split('\n') +
-                    content_lines[end_idx:]
+                    content_lines[:start_idx]
+                    + replace_str.split("\n")
+                    + content_lines[end_idx:]
                 )
-                return '\n'.join(new_lines)
+                return "\n".join(new_lines)
 
         return None
 

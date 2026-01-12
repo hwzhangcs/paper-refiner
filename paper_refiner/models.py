@@ -328,7 +328,9 @@ class Issue:
     acceptance_criteria: str
     status: str = "open"
     type: str = "unknown"
-    affected_sections: List[str] = field(default_factory=list)  # Sections affected by this issue
+    affected_sections: List[str] = field(
+        default_factory=list
+    )  # Sections affected by this issue
     iteration: int = 0
     pass_id: int = 0
     resolved_in_iteration: Optional[int] = None
@@ -353,5 +355,17 @@ class Issue:
         """Create Issue from dictionary, handling missing fields safely."""
         # Filter data to only include valid fields
         valid_fields = cls.__dataclass_fields__.keys()
+
+        defaults = {
+            "title": "Untitled Issue",
+            "details": "No details provided",
+            "acceptance_criteria": "None provided",
+        }
+
         filtered_data = {k: v for k, v in data.items() if k in valid_fields}
+
+        for field_name, default_value in defaults.items():
+            if field_name not in filtered_data:
+                filtered_data[field_name] = default_value
+
         return cls(**filtered_data)
