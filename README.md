@@ -49,36 +49,59 @@ Paper Refiner uses a distinct two-step process to maximize quality:
 Please refer to **[SETUP.md](SETUP.md)** for detailed installation and configuration instructions.
 
 **Quick Summary:**
-1.  Clone the repo.
+1.  Clone the repo: `git clone https://github.com/hwzhangcs/paper-refiner.git`
 2.  Install dependencies: `uv sync`
-3.  Configure credentials using our helper tool:
+3.  Set up OpenAI API key in `.env` file
+4.  Configure Yuketang credentials using our helper tool:
     ```bash
-    # Setup Review Mode (Iteration 0)
-    uv run python tools/extract_session_params.py "URL" review
+    # Get Review Mode URL from "AI 论文批改" page and run:
+    uv run python tools/extract_session_params.py "YOUR_URL_HERE" review
 
-    # Setup Assistant Mode (Pass 1-5)
-    uv run python tools/extract_session_params.py "URL" assistant
+    # Get Assistant Mode URL from "AI 助教" page and run:
+    uv run python tools/extract_session_params.py "YOUR_URL_HERE" assistant
     ```
 
 ---
 
 ## 📖 Usage
 
-### Basic Usage
+### Command Line (Recommended)
 
-To start refining a paper:
+The easiest way to use Paper Refiner is through the command line:
+
+```bash
+# Using default configuration (requires config/session_params.json)
+uv run python run_refiner.py --paper path/to/paper.tex --iterations 3
+
+# Using specific configuration (e.g., review or assistant mode)
+uv run python run_refiner.py --config review --paper path/to/paper.tex --iterations 3
+```
+
+### Programmatic Usage
+
+For more control, you can use the Python API directly:
 
 ```python
 from paper_refiner import PaperRefinerOrchestrator
+from paper_api.config import load_cookies, load_session_params
+
+# Load credentials
+cookies = load_cookies("config/cookies.json")
+params = load_session_params("config/session_params_assistant.json")
 
 # Initialize the system
 orchestrator = PaperRefinerOrchestrator(
+    paper_path="./paper.tex",
     work_dir="./run_workspace",
-    paper_path="./paper.tex"
+    ykt_cookies=cookies,
+    ykt_params=params,
+    openai_key="your-openai-api-key",
+    openai_model="gpt-4o",
+    max_iterations=3
 )
 
-# Start the process (runs Iteration 0 followed by refinement iterations)
-orchestrator.start(max_iterations=3)
+# Start the refinement process
+orchestrator.start()
 ```
 
 ### Output Structure
@@ -95,10 +118,11 @@ The system creates a `run_workspace` directory containing:
 
 - **`config/`**: Configuration files and templates.
 - **`paper_refiner/`**: Core source code.
-    - **`agents/`**: AI agent implementations.
+    - **`agents/`**: AI agent implementations (Reviewer, Editor, Scorer).
     - **`core/`**: Logic for patching, issue tracking, and versioning.
-- **`tools/`**: Helper scripts for setup and reporting.
-- **`docs/`**: Additional documentation.
+    - **`prompts/`**: Prompt templates for different passes.
+- **`tools/`**: Helper scripts for credential extraction and reporting.
+- **`tests/`**: Test suite for core functionality.
 
 ---
 

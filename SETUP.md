@@ -13,8 +13,8 @@ This guide will help you set up the Paper Refiner system.
 
 1.  **Clone the repository:**
     ```bash
-    git clone <repository-url>
-    cd paper_refiner
+    git clone https://github.com/hwzhangcs/paper-refiner.git
+    cd paper-refiner
     ```
 
 2.  **Install dependencies:**
@@ -38,7 +38,7 @@ The system requires credentials for Yuketang to function. You need to configure 
 
 1.  Log in to Yuketang web interface.
 2.  Navigate to the **"AI Paper Grading" (AI 论文批改)** section.
-3.  Copy the URL of the page (it should look like `.../pro/lms/...`).
+3.  Copy the URL of the page (it should look like `https://www.yuketang.cn/ai-workspace/chatbot-entry-web?aid=...`).
 4.  Run the extraction tool:
     ```bash
     uv run python tools/extract_session_params.py "YOUR_REVIEW_PAGE_URL" review
