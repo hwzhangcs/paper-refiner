@@ -152,6 +152,9 @@ class PaperRefinerOrchestrator:
             params=ykt_review_params,
             conversation_id=ykt_review_conversation_id,
             reset_conversation_each_request=reset_conversation_each_request,
+            openai_key=openai_key,
+            openai_base_url=openai_base_url,
+            openai_model=openai_model,
         )
 
         # Regular reviewer for Pass 1-5 (uses assistant mode config)
@@ -160,6 +163,9 @@ class PaperRefinerOrchestrator:
             params=ykt_params,
             conversation_id=ykt_conversation_id,
             reset_conversation_each_request=reset_conversation_each_request,
+            openai_key=openai_key,
+            openai_base_url=openai_base_url,
+            openai_model=openai_model,
         )
 
         self.editor = EditorAgent(
